@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anonymous+Pro:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <title>Some Hacking Would Do You Good</title>
+  <style>
+    html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #fff;
+  font-family: "Anonymous Pro", monospace;
+}
+
+/* Fixed 1280x720 canvas that scales to fit any browser size */
+#scene {
+  position: absolute;
+  width: 1280px;
+  height: 720px;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+}
+
+#Unit1 {
+  position: absolute;
+  top: 531px;
+  left: 895px;
+  transform: translate(-50%, -50%);
+  width: 70px;
+}
+#Unit2 {
+  position: absolute;
+  top: 254px;
+  left: 349px;
+  transform: translate(-50%, -50%);
+  width: 60px;
+}
+#Unit3 {
+  position: absolute;
+  top: 191px;
+  left: 833px;
+  transform: translate(-50%, -50%);
+  width: 60px;
+}
+#yard {
+  position: absolute;
+  top: 60px;
+  left: 96px;
+  transform: none;
+  width: 1088px;
+  height: 592px;
+}
+#gate {
+  position: absolute;
+  top: 70px;
+  left: 624px;
+  transform: translate(-50%, -50%);
+  width: 90px;
+}
+#terminal {
+  position: absolute;
+  top: 101px;
+  left: 940px;
+  transform: none;
+  width: 45px;
+  height: 80px;
+}
+#instruction{
+  position: absolute;
+  top: 200px;
+  left: 514px;
+  transform: none;
+  width: 252px;
+  height: 300px;
+  z-index: 0;
+}
+    .fake-window {
+      position: absolute;
+      width: 350px;
+      height: 200px;
+      background: #fff;
+      border: 1px solid #333;
+      box-shadow: 4px 4px 10px rgba(0,0,0,0.3);
+      display: flex;
+      flex-direction: column;
+      z-index: 10;
+    }
+
+    .fake-clock-window{
+        position: absolute;
+      width: 500px;
+      height: 600px;
+      background: #fff;
+      border: 1px solid #333;
+      box-shadow: 4px 4px 10px rgba(0,0,0,0.3);
+      display: flex;
+      flex-direction: column;
+      z-index: 10;
+    }
+
+    .title-bar {
+      background: #333;
+      color: #fff;
+      padding: 5px;
+      cursor: move;
+      user-select: none;
+    }
+
+    .sec-bar {
+  display: flex;
+  justify-content: flex-start;
+  gap: 6px;
+  align-items: center;
+  background: #e0e0e0;
+  padding: 4px 8px;
+  font-weight: bold;
+  border-bottom: 1px solid #999;
+}
+.inter-content {
+  font-family: "Anonymous Pro", monospace;
+  font-optical-sizing: auto;
+  font-weight: 700;
+  font-style: normal;
+}
+    .content {
+      font-size: 36px;
+      font-weight: 700;
+      flex: 1;
+      padding: 10px;
+      overflow: auto;
+    }
+    .clock-content {
+      font-size: 36px;
+      font-weight: 700;
+      flex: 1;
+
+      overflow: auto;
+    }
+
+    
+
+    .contentHint {
+      font-size: 20px;
+      flex: 1;
+      padding: 10px;
+      overflow: auto;
+    }
+
+    button {
+      margin-top: 5px;
+      padding: 3px 6px;
+      font-size: 18px;
+       background: none;       /* remove background color */
+  border: none; 
+    }
+
+  </style>
+</head>
+<body>
+<div id="scene">
+<div id="message"></div>
+<img id="yard" src="images/yard.png" >
+<img id="Unit1" src="images/unit1.png" >
+<img id="Unit2" src="images/unit2.png" >
+<img id="Unit3" src="images/unit3.png" >
+<img id="terminal" src="images/terminal.png" >
+<img id="gate" src="images/gate.png" >
+<img id="instruction" src="images/instruction.png" >
+
+
+
+<script>
+// Scale #scene to always fit the browser window proportionally
+function scaleScene() {
+  const scene = document.getElementById("scene");
+  const scaleX = window.innerWidth / 1280;
+  const scaleY = window.innerHeight / 720;
+  const scale = Math.min(scaleX, scaleY);
+  const offsetX = (window.innerWidth - 1280 * scale) / 2;
+  const offsetY = (window.innerHeight - 720 * scale) / 2;
+  scene.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
+}
+window.addEventListener("load", scaleScene);
+window.addEventListener("resize", scaleScene);
+
+
+function startImageRepelAnimation() {
+  const Unit1 = document.getElementById("Unit1");
+  const img2 = Unit1.cloneNode(true);
+  document.getElementById("scene").appendChild(img2);
+
+  const centerX = Unit1.offsetLeft;
+  const centerY = Unit1.offsetTop;
+  const imgWidth = Unit1.offsetWidth;
+  const imgHeight = Unit1.offsetHeight;
+
+  let distance = 0;
+  let movingOut = true;
+
+  Unit1.style.position = "absolute";
+  img2.style.position = "absolute";
+
+  function animate() {
+    distance += movingOut ? 0.5 : -0.5;
+    if (distance >= 100) movingOut = false;
+    if (distance <= 0) movingOut = true;
+
+    Unit1.style.left = `${centerX - distance / 2 - imgWidth / 2}px`;
+    Unit1.style.top = `${centerY - imgHeight / 2}px`;
+    Unit1.style.opacity = distance / 200;
+
+    img2.style.left = `${centerX + distance / 2 - imgWidth / 2}px`;
+    img2.style.top = `${centerY - imgHeight / 2}px`;
+    img2.style.opacity = distance / 200;
+
+    requestAnimationFrame(animate);
+  }
+
+  animate();
+}
+  
+function startBlurAnimation() {
+  const unit2 = document.getElementById("Unit3");
+  let blur = 0;
+  let increasing = true;
+  const maxBlur = 10;
+
+  function animate() {
+    blur += increasing ? 0.1 : -0.1;
+    if (blur >= maxBlur) increasing = false;
+    if (blur <= 0) increasing = true;
+
+    unit2.style.filter = `blur(${blur}px)`;
+    requestAnimationFrame(animate);
+  }
+
+  animate();
+}
+
+function startImageSwitchAnimation() {
+  const unit2 = document.getElementById("Unit2");
+  const originalSrc = unit2.src;
+  const altSrc = "images/unit2_alt.png"; // replace with your alternate image
+  let isOriginal = true;
+
+  setInterval(() => {
+    unit2.src = isOriginal ? altSrc : originalSrc;
+    isOriginal = !isOriginal;
+  }, 1000); // switches every 1 second
+}
+
+
+const textSets = [
+  ["DISS", "DIAL", "DEST"], // fake window 2
+  ["OCIA", "OTIA", "OSIA", "LOCA"],
+  ["TION","SION","GION"]  ,
+  ["Losing connect with yourself, you are the closest stranger"],
+  ["Your are a scattered being connected by one thin thread."],
+  ["OVE"] ,
+  ["RFO"],
+  ["CUS"],
+  ["Find the focus that makes you clear about things. "]  // fake window 3
+];
+
+document.getElementById("Unit1").addEventListener("click", () => {
+  fakeWindows.forEach(w => w.remove());
+  fakeWindows = [];
+  
+
+  createFakeWindow("Window 2", textSets[0], 100, 100);
+  createFakeWindow("Window 3", textSets[1], 400, 150);
+  createFakeWindow("Window 4", textSets[2], 300, 250);
+  createFakeWindowHint("Hint", textSets[3], 500, 250);
+  createInputWindow("Password",600,200);
+  createClock("Time Count", 1000,50);
+});
+
+let fakeWindows = [];
+let zIndexCounter = 10; 
+
+// Create a draggable fake window
+function createFakeWindow(title, texts, x, y) {
+  const win = document.createElement("div");
+  win.className = "fake-window";
+  win.style.left = x + "px";
+  win.style.top = y + "px";
+
+  win.style.zIndex = zIndexCounter;
+
+  // --- bring to front when clicked
+  win.addEventListener("mousedown", () => {
+    zIndexCounter++;
+    win.style.zIndex = zIndexCounter;
+  });
+
+  const titleBar = document.createElement("div");
+  titleBar.className = "title-bar";
+  titleBar.textContent = title;
+
+  const secBar = document.createElement("div");
+  secBar.className = "sec-bar";
+  const refreshBtn = document.createElement("button");
+  refreshBtn.textContent = "↻";
+  refreshBtn.onclick = () => {
+    wordP.textContent = texts[Math.floor(Math.random()*texts.length)];
+  }
+  secBar.appendChild(refreshBtn);
+  const label = document.createElement("span");
+  label.textContent = "http://Unit1.com";
+   secBar.appendChild(label);
+
+  const content = document.createElement("div");
+  content.className = "content";
+  const wordP = document.createElement("p");
+  wordP.textContent = texts[Math.floor(Math.random()*texts.length)];
+  content.appendChild(wordP);
+
+  
+
+  win.appendChild(titleBar);
+  win.appendChild(secBar)
+  win.appendChild(content);
+  document.getElementById("scene").appendChild(win);
+fakeWindows.push(win);
+  makeDraggable(win, titleBar);
+}
+
+function createFakeWindowHint(title, texts, x, y) {
+  const win = document.createElement("div");
+  win.className = "fake-window";
+  win.style.left = x + "px";
+  win.style.top = y + "px";
+
+  win.style.zIndex = zIndexCounter;
+
+  // --- bring to front when clicked
+  win.addEventListener("mousedown", () => {
+    zIndexCounter++;
+    win.style.zIndex = zIndexCounter;
+  });
+
+  const titleBar = document.createElement("div");
+  titleBar.className = "title-bar";
+  titleBar.textContent = title;
+
+  
+  const content = document.createElement("div");
+  content.className = "contentHint";
+  const wordP = document.createElement("p");
+  wordP.textContent = texts[Math.floor(Math.random()*texts.length)];
+  content.appendChild(wordP);
+
+  const content2 = document.createElement("div");
+  content.className = "contentHint";
+  const hint = document.createElement("p");
+  hint.textContent = "Refresh to see possible elements.";
+  content.appendChild(hint);
+
+  win.appendChild(titleBar);
+
+  win.appendChild(content);
+  document.getElementById("scene").appendChild(win);
+fakeWindows.push(win);
+  makeDraggable(win, titleBar);
+}
+
+function createInputWindow(title, x, y) {
+  const win = document.createElement("div");
+  win.className = "fake-window";
+  win.style.left = x + "px";
+  win.style.top = y + "px";
+  win.style.zIndex = zIndexCounter;
+
+  win.addEventListener("mousedown", () => {
+    zIndexCounter++;
+    win.style.zIndex = zIndexCounter;
+  });
+
+  // Title bar
+  const titleBar = document.createElement("div");
+  titleBar.className = "title-bar";
+  titleBar.textContent = title;
+
+  // Content
+  const content = document.createElement("div");
+  content.className = "content";
+  const input = document.createElement("input");
+  input.placeholder = "Type here";
+  const submitBtn = document.createElement("button");
+  submitBtn.style.fontFamily = "'Anonymous Pro', monospace";
+  submitBtn.textContent = "Send";
+
+  const feedback = document.createElement("p");
+
+  submitBtn.onclick = () => {
+    if (input.value.trim().toLowerCase() === "dissociation") { // correct answer
+      feedback.textContent = "You hacked Unit 1!";
+      solved.Unit1 = true;
+      checkAllSolved();
+    // remove all windows after 5 seconds
+    setTimeout(() => {
+      fakeWindows.forEach(w => w.remove());
+      fakeWindows = [];
+      startImageRepelAnimation();
+    }, 3000); // 5000 milliseconds = 5 seconds
+    const u = document.getElementById("Unit1");
+    handleUnit1();
+    document.getElementById("Unit1").style.pointerEvents = "none";
+if (clockSketch) {
+    clockSketch.noLoop();
+    if (window.tickAudio) { window.tickAudio.pause(); window.tickAudio.currentTime = 0; }
+
+    clockSketch.remove();
+    
+    clockSketch = null;
+    minuteCount = 0;  // reset here
+    passed12 = false; 
+  }
+  } else {
+    feedback.textContent = "❌ Try again.";
+  }
+  };
+
+  content.appendChild(input);
+  content.appendChild(submitBtn);
+  content.appendChild(feedback);
+
+  // Assemble
+  win.appendChild(titleBar);
+  win.appendChild(content);
+  document.getElementById("scene").appendChild(win);
+fakeWindows.push(win);
+  fakeWindows.push(win);
+  makeDraggable(win, titleBar);
+}
+
+function loadFragments() {
+  const fragmentSources = [
+    "images/piece1.png",
+    "images/piece2.png",
+    "images/piece3.png",
+    "images/piece4.png",
+    "images/piece5.png"
+  ];
+
+  fragmentSources.forEach((src, i) => {
+    const img = document.createElement("img");
+    img.src = src;
+    img.id = "fragment" + (i + 1);
+    img.style.position = "absolute";
+    img.style.left = (100 + i * 200) + "px";
+    img.style.top = "300px";
+    img.style.scale="30%"
+    document.getElementById("scene").appendChild(img);
+    makeDraggable(img,img)
+  });
+  
+}
+
+document.getElementById("Unit2").addEventListener("click", () => {
+  loadFragments();
+  createFakeWindowHint2("Hint", textSets[4], 500, 250);
+  createInputWindow2("Password",600,200);
+  createClock("Time Count", 1000,50);
+});
+
+function createInputWindow2(title, x, y) {
+  const win = document.createElement("div");
+  win.className = "fake-window";
+  win.style.left = x + "px";
+  win.style.top = y + "px";
+  win.style.zIndex = zIndexCounter;
+
+  win.addEventListener("mousedown", () => {
+    zIndexCounter++;
+    win.style.zIndex = zIndexCounter;
+  });
+
+  // Title bar
+  const titleBar = document.createElement("div");
+  titleBar.className = "title-bar";
+  titleBar.textContent = title;
+
+  // Content
+  const content = document.createElement("div");
+  content.className = "content";
+  const input = document.createElement("input");
+  input.placeholder = "Type here";
+  const submitBtn = document.createElement("button");
+  submitBtn.style.fontFamily = "'Anonymous Pro', monospace";
+  submitBtn.textContent = "Send";
+
+  const feedback = document.createElement("p");
+
+  submitBtn.onclick = () => {
+    if (input.value.trim().toLowerCase() === "fragmentation") { // correct answer
+      feedback.textContent = "You hacked Unit 2!";
+      solved.Unit2 = true;
+      checkAllSolved();
+    // remove all windows after 5 seconds
+    setTimeout(() => {
+      fakeWindows.forEach(w => w.remove());
+      fakeWindows = [];
+      document.querySelectorAll("[id^='fragment']").forEach(el => el.remove());
+      startImageSwitchAnimation();
+      handleUnit2();
+    }, 3000); // 5000 milliseconds = 5 seconds
+    const u = document.getElementById("Unit2");
+document.getElementById("Unit2").style.pointerEvents = "none";
+if (clockSketch) {
+    clockSketch.noLoop();
+    if (window.tickAudio) { window.tickAudio.pause(); window.tickAudio.currentTime = 0; }
+    clockSketch.remove();
+    
+    clockSketch = null;
+    minuteCount = 0;  // reset here
+    passed12 = false;
+  }
+  } else {
+    feedback.textContent = "❌ Try again.";
+    
+  }
+  };
+
+  content.appendChild(input);
+  content.appendChild(submitBtn);
+  content.appendChild(feedback);
+
+  // Assemble
+  win.appendChild(titleBar);
+  win.appendChild(content);
+  document.getElementById("scene").appendChild(win);
+fakeWindows.push(win);
+  fakeWindows.push(win);
+  makeDraggable(win, titleBar);
+}
+
+function createFakeWindowHint2(title, texts, x, y) {
+  const win = document.createElement("div");
+  win.className = "fake-window";
+  win.style.left = x + "px";
+  win.style.top = y + "px";
+
+  win.style.zIndex = zIndexCounter;
+
+  // --- bring to front when clicked
+  win.addEventListener("mousedown", () => {
+    zIndexCounter++;
+    win.style.zIndex = zIndexCounter;
+  });
+
+  const titleBar = document.createElement("div");
+  titleBar.className = "title-bar";
+  titleBar.textContent = title;
+
+  
+  const content = document.createElement("div");
+  content.className = "contentHint";
+  const wordP = document.createElement("p");
+  wordP.textContent = texts[Math.floor(Math.random()*texts.length)];
+  content.appendChild(wordP);
+
+  const content2 = document.createElement("div");
+  content.className = "contentHint";
+  const hint = document.createElement("p");
+  hint.textContent = "Assemble to see your answer.";
+  content.appendChild(hint);
+
+  win.appendChild(titleBar);
+
+  win.appendChild(content);
+  document.getElementById("scene").appendChild(win);
+fakeWindows.push(win);
+  makeDraggable(win, titleBar);
+}
+
+document.getElementById("Unit3").addEventListener("click", () => {
+  createBlurWindow("Window 2", textSets[5], 100, 100);
+  createBlurWindow("Window 3", textSets[6], 400, 150);
+  createBlurWindow("Window 4", textSets[7], 300, 250);
+  createFakeWindowHint3("Hint", textSets[8], 500, 250);
+  createInputWindow3("Password",600,200);
+  createClock("Time Count", 1000,50);
+});
+
+function createBlurWindow(title, text, x, y) {
+  const win = document.createElement("div");
+  win.className = "fake-window";
+  win.style.left = x + "px";
+  win.style.top = y + "px";
+  win.style.zIndex = zIndexCounter;
+
+  win.addEventListener("mousedown", () => {
+    zIndexCounter++;
+    win.style.zIndex = zIndexCounter;
+  });
+
+  const titleBar = document.createElement("div");
+  titleBar.className = "title-bar";
+  titleBar.textContent = title;
+
+  const content = document.createElement("div");
+  content.className = "content";
+
+  const clearPoint = Math.floor(Math.random() * 101); // random 0–100
+
+  const wordP = document.createElement("p");
+  wordP.textContent = text;
+  wordP.style.filter = `blur(8px)`;
+
+  const slider = document.createElement("input");
+  slider.type = "range";
+  slider.min = 0;
+  slider.max = 100;
+  slider.value = 0;
+  slider.style.width = "100%";
+  slider.addEventListener("input", () => {
+    const distance = Math.abs(slider.value - clearPoint);
+    const blur = Math.min(distance * 0.2, 8);
+    wordP.style.filter = `blur(${blur}px)`;
+  });
+
+  content.appendChild(wordP);
+  content.appendChild(slider);
+
+  win.appendChild(titleBar);
+  win.appendChild(content);
+  document.getElementById("scene").appendChild(win);
+  fakeWindows.push(win);
+  makeDraggable(win, titleBar);
+}
+
+
+function createInputWindow3(title, x, y) {
+  const win = document.createElement("div");
+  win.className = "fake-window";
+  win.style.left = x + "px";
+  win.style.top = y + "px";
+  win.style.zIndex = zIndexCounter;
+
+  win.addEventListener("mousedown", () => {
+    zIndexCounter++;
+    win.style.zIndex = zIndexCounter;
+  });
+
+  // Title bar
+  const titleBar = document.createElement("div");
+  titleBar.className = "title-bar";
+  titleBar.textContent = title;
+
+  // Content
+  const content = document.createElement("div");
+  content.className = "content";
+  const input = document.createElement("input");
+  input.placeholder = "Type here";
+  const submitBtn = document.createElement("button");
+  submitBtn.style.fontFamily = "'Anonymous Pro', monospace";
+  submitBtn.textContent = "Send";
+
+  const feedback = document.createElement("p");
+
+  submitBtn.onclick = () => {
+    if (input.value.trim().toLowerCase() === "overfocus") { // correct answer
+      feedback.textContent = "You hacked Unit 3!";
+      solved.Unit3 = true;
+      checkAllSolved();
+    // remove all windows after 5 seconds
+    setTimeout(() => {
+      fakeWindows.forEach(w => w.remove());
+      fakeWindows = [];
+      document.querySelectorAll("[id^='fragment']").forEach(el => el.remove());
+      startBlurAnimation()
+    }, 3000); // 5000 milliseconds = 5 seconds
+    const u = document.getElementById("Unit3");
+handleUnit3();
+document.getElementById("Unit3").style.pointerEvents = "none";
+if (clockSketch) {
+    clockSketch.noLoop();
+    if (window.tickAudio) { window.tickAudio.pause(); window.tickAudio.currentTime = 0; }
+    clockSketch.remove();
+    
+    clockSketch = null;
+    minuteCount = 0;  // reset here
+    passed12 = false; 
+  }
+  } else {
+    feedback.textContent = "❌ Try again.";
+  }
+  };
+
+  content.appendChild(input);
+  content.appendChild(submitBtn);
+  content.appendChild(feedback);
+
+  // Assemble
+  win.appendChild(titleBar);
+  win.appendChild(content);
+  document.getElementById("scene").appendChild(win);
+fakeWindows.push(win);
+  fakeWindows.push(win);
+  makeDraggable(win, titleBar);
+}
+
+function createFakeWindowHint3(title, texts, x, y) {
+  const win = document.createElement("div");
+  win.className = "fake-window";
+  win.style.left = x + "px";
+  win.style.top = y + "px";
+
+  win.style.zIndex = zIndexCounter;
+
+  // --- bring to front when clicked
+  win.addEventListener("mousedown", () => {
+    zIndexCounter++;
+    win.style.zIndex = zIndexCounter;
+  });
+
+  const titleBar = document.createElement("div");
+  titleBar.className = "title-bar";
+  titleBar.textContent = title;
+
+  
+  const content = document.createElement("div");
+  content.className = "contentHint";
+  const wordP = document.createElement("p");
+  wordP.textContent = texts[Math.floor(Math.random()*texts.length)];
+  content.appendChild(wordP);
+
+  const content2 = document.createElement("div");
+  content.className = "contentHint";
+  const hint = document.createElement("p");
+  hint.textContent = "Assemble to see your answer.";
+  content.appendChild(hint);
+
+  win.appendChild(titleBar);
+
+  win.appendChild(content);
+  document.getElementById("scene").appendChild(win);
+fakeWindows.push(win);
+  makeDraggable(win, titleBar);
+}
+
+let clockSketch;
+function createClock(title, x, y) {
+  const win = document.createElement("div");
+  win.className = "fake-clock-window";
+  win.style.left = x + "px";
+  win.style.top = y + "px";
+  win.style.zIndex = zIndexCounter;
+
+  // Bring to front when clicked
+  win.addEventListener("mousedown", () => {
+    zIndexCounter++;
+    win.style.zIndex = zIndexCounter;
+  });
+
+  // Title bar
+  const titleBar = document.createElement("div");
+  titleBar.className = "title-bar";
+  titleBar.textContent = title;
+
+
+  // Content area
+  const content = document.createElement("div");
+  content.className = "clock-content";
+  content.style.position = "relative";
+  content.style.width = "500px";
+  content.style.height = "500px";
+
+  // Canvas container
+  const canvasContainer = document.createElement("div");
+  canvasContainer.id = "canvas-" + fakeWindows.length;
+  canvasContainer.style.width = "100%";
+  canvasContainer.style.height = "100%";
+  content.appendChild(canvasContainer);
+
+  win.appendChild(titleBar);
+ 
+  win.appendChild(content);
+  document.getElementById("scene").appendChild(win);
+
+  fakeWindows.push(win);
+
+  // Make draggable
+  makeDraggable(win, titleBar);
+  
+
+  let passed12 = false;
+  let minuteCount = 0;
+  // Initialize p5 sketch for this window
+window.tickAudio = new Audio('images/clock-ticking.mp3');
+window.tickAudio.loop = true;
+window.tickAudio.play();
+  clockSketch=new p5((p) => {
+    let numbers = [
+      { value: 12 }, { value: 1 }, { value: 2 }, { value: 3 },
+      { value: 4 }, { value: 5 }, { value: 6 }, { value: 7 },
+      { value: 8 }, { value: 9 }, { value: 10 }, { value: 11 }
+    ];
+    let centerX, centerY, radius;
+    let angles = [];
+    let angleStep = 360 / numbers.length;
+    let angleOffset = -90;
+    let pointerAngle = 270;
+    
+    
+    let clock;
+
+   
+
+    p.setup = function() {
+      p.frameRate(3)
+      let canvas = p.createCanvas(500, 550);
+      canvas.parent(canvasContainer.id);
+      centerX = p.width / 2;
+      centerY = p.height / 2;
+      radius = 200;
+      p.angleMode(p.DEGREES);
+      p.textAlign(p.CENTER, p.CENTER);
+      for (let i = 0; i < numbers.length; i++) angles.push(angleOffset + i * angleStep);
+    };
+    
+    p.draw = function() {
+      p.background(255);
+
+      // Draw clock circle
+      p.stroke(0);
+      p.noFill();
+      p.strokeWeight(4);
+      
+
+      // Shuffle numbers
+      let shuffledAngles = p.shuffle([...angles]);
+      let angle12 = 0;
+
+      for (let i = 0; i < numbers.length; i++) {
+        let ang = shuffledAngles[i];
+        let x = centerX + p.cos(ang) * radius;
+        let y = centerY + p.sin(ang) * radius;
+        numbers[i].x = x;
+        numbers[i].y = y;
+        numbers[i].angle = ang;
+
+        if (numbers[i].value === 12) angle12 = ang;
+
+        p.textSize(p.random(24, 48));
+        p.noStroke();
+        p.fill(0);
+        p.text(numbers[i].value, x, y);
+      }
+
+      // Draw pointer
+      p.push();
+      p.translate(centerX, centerY);
+      p.rotate(pointerAngle);
+      p.stroke(255, 0, 0);
+      p.strokeWeight(4);
+      p.line(0, 0, 0, -radius + 30);
+      p.pop();
+
+      // Check pointer vs 12
+      let pointerDeg = (pointerAngle % 360 + 360) % 360;
+      if (p.abs(pointerDeg - angle12) < 15) {
+        if (!passed12) {
+          minuteCount++;
+          passed12 = true;
+
+          // If minute reaches 10, close all windows and reset
+          if (minuteCount >= 10) {
+  for (let w of fakeWindows) {
+    w.remove();
+    document.querySelectorAll("[id^='fragment']").forEach(el => el.remove());
+  }
+  fakeWindows = [];
+  
+  // stop the sketch
+  clockSketch.noLoop();
+  if (window.tickAudio) { window.tickAudio.pause(); window.tickAudio.currentTime = 0; }
+  clockSketch.remove();
+  
+  clockSketch = null;
+}
+        }
+      } else passed12 = false;
+
+      pointerAngle += 0.5;
+
+      // Display minute count
+      p.noStroke();
+      p.fill(0);
+      p.textSize(24);
+      p.text("Time left: " + (10-minuteCount)+" mins", centerX, p.height - 30);
+    };
+  });
+}
+
+
+// Draggable helper
+function makeDraggable(el, handle) {
+  let offsetX = 0, offsetY = 0, isDown = false;
+
+  handle.addEventListener("mousedown", e => {
+    isDown = true;
+    offsetX = e.clientX - el.offsetLeft;
+    offsetY = e.clientY - el.offsetTop;
+    el.style.zIndex = 100; // bring to front
+  });
+
+  document.addEventListener("mouseup", () => isDown = false);
+
+  document.addEventListener("mousemove", e => {
+    if (!isDown) return;
+    el.style.left = (e.clientX - offsetX) + "px";
+    el.style.top = (e.clientY - offsetY) + "px";
+  });
+}
+
+const maxImages = 100;
+const maxPerSpot = 2;
+const step = 30;
+
+const spawnGroups = {
+  Unit1: { 
+    images: [], 
+    spots: {}, 
+    sources: ["images/pattern1.png", "images/pattern2.png", "images/pattern3.png"] 
+  },
+  Unit2: { 
+    images: [], 
+    spots: {}, 
+    sources: ["images/pattern4.png", "images/pattern5.png", "images/pattern6.png"] 
+  },
+  Unit3: { 
+    images: [], 
+    spots: {}, 
+    sources: ["images/pattern7.png", "images/pattern8.png", "images/pattern9.png"] 
+  }
+};
+
+function spawnImages(x, y, depth = 0, images = [], spots = {}, sources = []) {
+  if (images.length >= maxImages) return;
+
+  for (let i = 0; i < 2; i++) {
+    let newX, newY, key;
+    let attempts = 0;
+
+    do {
+      const dir = Math.floor(Math.random() * 4);
+      newX = x;
+      newY = y;
+      if (dir === 0) { newY -= step; newX -= step; }
+      else if (dir === 1) { newY += step; newX += step; }
+      else if (dir === 2) { newX -= step; newY += step; }
+      else { newX += step; newY -= step; }
+      key = `${newX}_${newY}`;
+      attempts++;
+    } while (spots[key] >= maxPerSpot && attempts < 10);
+
+    if (attempts >= 10) continue;
+
+    if (!spots[key]) spots[key] = 0;
+    spots[key]++;
+
+    const img = document.createElement("img");
+    const deg = [0, 90, 180, 270];
+    img.src = sources[Math.floor(Math.random() * sources.length)];
+    img.style.position = "absolute";
+    img.style.left = `${newX}px`;
+    img.style.top = `${newY}px`;
+    img.style.width = "30px";
+    img.style.transition = "rotate 1s ease-in-out";
+    img.style.zIndex = -1000;
+    img.style.rotate = deg[Math.floor(Math.random() * 4)] + "deg";
+
+    document.getElementById("scene").appendChild(img);
+    images.push(img);
+    setTimeout(() => spawnImages(newX, newY, depth + 1, images, spots, sources), 500);
+  }
+}
+
+function handleUnit1() {
+  const el = document.getElementById("Unit1");
+  const { images, spots, sources } = spawnGroups.Unit1;
+  spawnImages(el.offsetLeft, el.offsetTop, 0, images, spots, sources);
+}
+
+function handleUnit2() {
+  const el = document.getElementById("Unit2");
+  const { images, spots, sources } = spawnGroups.Unit2;
+  spawnImages(el.offsetLeft, el.offsetTop, 0, images, spots, sources);
+}
+
+function handleUnit3() {
+  const el = document.getElementById("Unit3");
+  const { images, spots, sources } = spawnGroups.Unit3;
+  spawnImages(el.offsetLeft, el.offsetTop, 0, images, spots, sources);
+}
+
+// track which units are solved
+const solved = { Unit1: false, Unit2: false, Unit3: false };
+
+function checkAllSolved() {
+  if (solved.Unit1 && solved.Unit2 && solved.Unit3) {
+    blinkTerminal();
+  }
+}
+
+function blinkTerminal() {
+  const terminal = document.getElementById("terminal");
+  const termLeft = terminal.offsetLeft;
+  const termTop = terminal.offsetTop;
+  const termW = terminal.offsetWidth;
+
+  for(let i=0; i<3; i++){
+    const dot = document.createElement("div");
+    dot.className = "terminal-dot";
+    dot.dataset.lit = "false";
+    dot.style.cssText = `
+      position:absolute;
+      width:18px; height:18px;
+      border-radius:50%;
+      background:#7BFFD7;
+      opacity:0;
+      left:${termLeft + termW/2 - 8}px;
+      top:${termTop + 10 + i*21}px;
+      z-index:999;
+      pointer-events:none;
+    `;
+    document.getElementById("scene").appendChild(dot);
+  }
+
+  let visible = true;
+  setInterval(() => {
+    terminal.style.opacity = visible ? 0 : 1;
+    document.querySelectorAll(".terminal-dot").forEach(dot => {
+      if (dot.dataset.lit === "true") {
+        dot.style.opacity = visible ? 0 : 1;
+      }
+    });
+    visible = !visible;
+  }, 400);
+
+  createCrosswordWindow(300, 150);
+}
+
+function createCrosswordWindow(x, y) {
+  const C = 38;
+
+  const words = [
+    { id:"overfocus",     word:"OVERFOCUS",     row:0, col:3, dir:"H" },
+    { id:"fragmentation", word:"FRAGMENTATION", row:0, col:7, dir:"V" },
+    { id:"dissociation",  word:"DISSOCIATION",  row:8, col:0, dir:"H" },
+  ];
+
+  // reference existing circles created in blinkTerminal
+  const circles = Array.from(document.querySelectorAll(".terminal-dot"));
+
+  const gridMap = {};
+  words.forEach(def => {
+    for(let i=0;i<def.word.length;i++){
+      const r = def.dir==="H" ? def.row : def.row+i;
+      const c = def.dir==="H" ? def.col+i : def.col;
+      const k = r+"_"+c;
+      if(!gridMap[k]) gridMap[k]={letter:def.word[i],count:0};
+      gridMap[k].count++;
+    }
+  });
+  Object.keys(gridMap).forEach(k=>{ if(gridMap[k].count>1) gridMap[k].inter=true; });
+
+  const decoys=[
+    ...[1,2,3,4,5,6,7,8].map(r=>({r,c:2})),
+    {r:5,c:6},
+    {r:5,c:8},{r:5,c:9},{r:5,c:10},{r:5,c:11},
+  ];
+  decoys.forEach(({r,c})=>{ const k=r+"_"+c; if(!gridMap[k]) gridMap[k]={letter:null,count:0,decoy:true}; });
+
+  let maxR=0,maxC=0;
+  Object.keys(gridMap).forEach(k=>{
+    const[r,c]=k.split("_").map(Number);
+    if(r>maxR)maxR=r; if(c>maxC)maxC=c;
+  });
+
+  const win = document.createElement("div");
+  win.className = "fake-window";
+  win.style.left = x + "px";
+  win.style.top = y + "px";
+  win.style.width = (maxC+2)*C + "px";
+  win.style.height = "auto";
+  win.style.zIndex = zIndexCounter;
+  win.addEventListener("mousedown", () => { zIndexCounter++; win.style.zIndex = zIndexCounter; });
+
+  const titleBar = document.createElement("div");
+  titleBar.className = "title-bar";
+  titleBar.textContent = "System Decryption";
+
+  const content = document.createElement("div");
+  content.className = "content";
+  content.style.background = "#000";
+  content.style.padding = "16px";
+  content.style.fontFamily = "'Anonymous Pro', monospace";
+
+  const gridEl = document.createElement("div");
+  gridEl.style.position = "relative";
+  gridEl.style.width = (maxC+1)*C + "px";
+  gridEl.style.height = (maxR+1)*C + "px";
+
+  const cellEls = {};
+  Object.keys(gridMap).forEach(key=>{
+    const[r,c]=key.split("_").map(Number);
+    const cell = document.createElement("div");
+    cell.style.cssText = `
+      position:absolute;
+      left:${c*C}px; top:${r*C}px;
+      width:${C-2}px; height:${C-2}px;
+      border:2px solid #fff;
+      background:${gridMap[key].inter ? "#fff" : "#000"};
+      display:flex; align-items:center; justify-content:center;
+      font-size:14px; font-weight:700;
+      color:#000; font-family:'Anonymous Pro',monospace;
+    `;
+    if(gridMap[key].inter) cell.textContent = gridMap[key].letter;
+    cellEls[key] = cell;
+    gridEl.appendChild(cell);
+  });
+
+  const solved = {};
+  let solvedCount = 0;
+
+  words.forEach(def=>{
+    const slot = document.createElement("div");
+    slot.style.position = "absolute";
+    slot.style.zIndex = 10;
+    if(def.dir==="H"){
+      slot.style.left = def.col*C+"px"; slot.style.top = def.row*C+"px";
+      slot.style.width = def.word.length*C+"px"; slot.style.height = C+"px";
+    } else {
+      slot.style.left = def.col*C+"px"; slot.style.top = def.row*C+"px";
+      slot.style.width = C+"px"; slot.style.height = def.word.length*C+"px";
+    }
+    slot.addEventListener("dragover", e=>e.preventDefault());
+    slot.addEventListener("drop", e=>{
+      e.preventDefault();
+      if(solved[def.id]) return;
+      const id = e.dataTransfer.getData("wid");
+      if(id !== def.id) return;
+      for(let i=0;i<def.word.length;i++){
+        const r=def.dir==="H"?def.row:def.row+i;
+        const c=def.dir==="H"?def.col+i:def.col;
+        const k=r+"_"+c;
+        if(cellEls[k]){ cellEls[k].textContent=def.word[i]; cellEls[k].style.background="#fff"; }
+      }
+      solved[def.id]=true;
+      circles[solvedCount].dataset.lit = "true";
+      solvedCount++;
+
+      const t=document.getElementById("cw_t_"+def.id);
+      if(t) t.style.opacity="0.2";
+
+      if(solvedCount===words.length){
+        titleBar.textContent="✓ Decrypted!";
+        
+        // *** YOUR SOLVE CALLBACK HERE ***
+        showGateEnding();
+        setTimeout(()=>{ win.remove(); }, 2000);
+      }
+    });
+    gridEl.appendChild(slot);
+  });
+
+  const tileArea = document.createElement("div");
+  tileArea.style.cssText = "margin-top:14px; display:flex; flex-direction:column; gap:8px;";
+
+  [...words].sort(()=>Math.random()-.5).forEach(def=>{
+    const t = document.createElement("div");
+    t.id = "cw_t_" + def.id;
+    t.draggable = true;
+    t.textContent = def.word;
+    t.style.cssText = "color:#fff; font-family:'Anonymous Pro',monospace; font-size:15px; font-weight:600; letter-spacing:2px; cursor:grab; width:fit-content;";
+    t.addEventListener("dragstart", e=>e.dataTransfer.setData("wid", def.id));
+    tileArea.appendChild(t);
+  });
+
+  content.appendChild(gridEl);
+  content.appendChild(tileArea);
+  win.appendChild(titleBar);
+  win.appendChild(content);
+  document.getElementById("scene").appendChild(win);
+  makeDraggable(win, titleBar);
+}
+
+function showGateEnding() {
+  setTimeout(() => {
+    const gate = document.getElementById("gate");
+    const rect = gate.getBoundingClientRect();
+    const midX = rect.left + rect.width / 2;
+
+    gate.style.visibility = "hidden";
+
+    // container clips the left half
+    const leftWrap = document.createElement("div");
+    leftWrap.style.cssText = `
+      position:fixed;
+      top:${rect.top}px;
+      left:${rect.left}px;
+      width:${rect.width / 2}px;
+      height:${rect.height}px;
+      overflow:hidden;
+      transition:transform 1.2s cubic-bezier(0.77,0,0.18,1);
+      z-index:9999;
+    `;
+    const imgL = document.createElement("img");
+    imgL.src = "images/gate.png";
+    imgL.style.cssText = `width:${rect.width}px;height:${rect.height}px;position:absolute;top:0;left:0;`;
+    leftWrap.appendChild(imgL);
+
+    // container clips the right half
+    const rightWrap = document.createElement("div");
+    rightWrap.style.cssText = `
+      position:fixed;
+      top:${rect.top}px;
+      left:${midX}px;
+      width:${rect.width / 2}px;
+      height:${rect.height}px;
+      overflow:hidden;
+      transition:transform 1.2s cubic-bezier(0.77,0,0.18,1);
+      z-index:9999;
+    `;
+    const imgR = document.createElement("img");
+    imgR.src = "images/gate.png";
+    imgR.style.cssText = `width:${rect.width}px;height:${rect.height}px;position:absolute;top:0;left:-${rect.width / 2}px;`;
+    rightWrap.appendChild(imgR);
+
+    document.body.appendChild(leftWrap);
+    document.body.appendChild(rightWrap);
+
+    setTimeout(() => {
+      leftWrap.style.transform = "translateX(-50%)";
+      rightWrap.style.transform = "translateX(50%)";
+      setTimeout(() => {
+    window.location.href = './levelselector.html';
+  }, 1200 + 3000); 
+    }, 300);
+
+  }, 2200);
+}
+</script>
+
+</div>
+
+<script>
+function getScale() {
+  return Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+}
+</script>
+
+</body>
+</html>

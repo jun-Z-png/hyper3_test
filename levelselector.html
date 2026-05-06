@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hyper</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Roboto+Condensed:wght@300;400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #ffffff;
+    font-family: 'EB Garamond', serif;
+    cursor: default;
+    position: relative;
+  }
+
+  #staffCanvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .treble-clef {
+    position: absolute;
+    z-index: 0;
+    opacity: 0.06;
+    font-size: 800px;
+    font-family: 'EB Garamond', serif;
+    color: #000;
+    user-select: none;
+    pointer-events: none;
+    line-height: 1;
+  }
+  .treble-clef-1 {
+    top: -120px;
+    right: -80px;
+    animation: floatClef1 12s ease-in-out infinite;
+  }
+  .treble-clef-2 {
+    bottom: -200px;
+    left: -100px;
+    font-size: 700px;
+    opacity: 0.04;
+    animation: floatClef2 15s ease-in-out infinite;
+  }
+
+  @keyframes floatClef1 {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    25% { transform: translate(-8px, 12px) rotate(0.5deg); }
+    50% { transform: translate(5px, -8px) rotate(-0.3deg); }
+    75% { transform: translate(-3px, 6px) rotate(0.2deg); }
+  }
+  @keyframes floatClef2 {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    33% { transform: translate(10px, -6px) rotate(-0.4deg); }
+    66% { transform: translate(-6px, 10px) rotate(0.6deg); }
+  }
+
+  /* UI sits on top of staves */
+  .ui-layer {
+    position: absolute;
+    z-index: 10;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  .ui-layer * {
+    pointer-events: auto;
+  }
+
+  .top-text {
+    position: absolute;
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 20px;
+    font-weight: 500;
+    color: #000;
+    letter-spacing: 0.02em;
+  }
+
+  .bottom-text {
+    position: absolute;
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 20px;
+    font-weight: 500;
+    color: #000;
+  }
+
+  .level-link {
+    position: absolute;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.2s ease;
+  }
+  .level-link:hover { transform: scale(1.03); }
+
+  .level-placeholder {
+    background: rgba(200, 195, 188, 0.5);
+    border: 2px dashed rgba(0,0,0,0.25);
+    border-radius: 4px;
+    color: #777;
+    font-size: 14px;
+    font-style: italic;
+    font-family: 'Roboto Condensed', sans-serif;
+  }
+
+  .hover-preview {
+    position: fixed;
+    width: 320px;
+    height: 193px;
+    background: #ddd;
+   
+  
+    pointer-events: none;
+    z-index: 100;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: #999;
+    font-style: italic;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  }
+  .hover-preview.visible { opacity: 1; }
+
+  .trail-img {
+    position: fixed;
+    width: 36px;
+    height: 36px;
+    pointer-events: none;
+    z-index: 90;
+    opacity: 0.85;
+    transition: opacity 2.5s ease;
+    object-fit: contain;
+  }
+  .trail-img.fade {
+    opacity: 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="treble-clef treble-clef-1">&#119070;</div>
+<div class="treble-clef treble-clef-2">&#119070;</div>
+
+<canvas id="staffCanvas"></canvas>
+
+<div class="hover-preview" id="hoverPreview">Level preview</div>
+
+<div class="ui-layer" id="uiLayer">
+  <div class="top-text" id="topText">Click a level to start</div>
+  <a class="level-link " id="level1" data-level="1" href="#"><img src="./images/hyper1.png" style="width:100%;height:100%;object-fit:contain;"></a>
+  <a class="level-link " id="level2" data-level="2" href="#"><img src="./images/hyper2.png" style="width:100%;height:100%;object-fit:contain;"></a>
+<a class="level-link " id="level3" data-level="3" href="#"><img src="./images/hyper3.png" style="width:100%;height:100%;object-fit:contain;"></a>
+  <div class="bottom-text" id="bottomText">A project by Jun Zhou</div>
+</div>
+
+<script>
+const staffCanvas = document.getElementById('staffCanvas');
+const staffCtx = staffCanvas.getContext('2d');
+let mouseX = -9999, mouseY = -9999;
+
+// ── Staff config ──
+const STAFF_GROUPS = 5;
+const LINES_PER_STAFF = 5;
+const LINE_SPACING = 10;
+const STAFF_GAP = 100;
+const MARGIN = 40;
+const RIPPLE_R = 220;
+const PEAK_AMP = 90;
+
+// Per-line irregularity: each line gets unique peak offset distance and direction
+const lineSeeds = [];
+for (let g = 0; g < STAFF_GROUPS; g++) {
+  for (let l = 0; l < LINES_PER_STAFF; l++) {
+    lineSeeds.push({
+      peakDist: 40 + Math.random() * 80,        // how far from cursor the peak sits
+      peakDir: Math.random() > 0.5 ? 1 : -1,   // peak to left or right of cursor
+      ampMul: 0.5 + Math.random() * 1.0,        // amplitude variation
+      slopeIn: 20 + Math.random() * 40,         // inner slope width (cursor to peak)
+      slopeOut: 40 + Math.random() * 80,         // outer slope width (peak to flat)
+    });
+  }
+}
+
+function resizeStaff() {
+  const dpr = window.devicePixelRatio || 1;
+  staffCanvas.width = window.innerWidth * dpr;
+  staffCanvas.height = window.innerHeight * dpr;
+  staffCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+resizeStaff();
+window.addEventListener('resize', () => { resizeStaff(); positionUI(); });
+document.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
+
+// ── Compute staff Y positions ──
+function getStaffPositions() {
+  const H = window.innerHeight;
+  const totalStaffH = (LINES_PER_STAFF - 1) * LINE_SPACING;
+  const totalH = STAFF_GROUPS * totalStaffH + (STAFF_GROUPS - 1) * STAFF_GAP;
+  const startY = (H - totalH) / 2;
+  const groups = [];
+  for (let g = 0; g < STAFF_GROUPS; g++) {
+    const top = startY + g * (totalStaffH + STAFF_GAP);
+    groups.push({ top, bottom: top + totalStaffH });
+  }
+  return groups;
+}
+
+// ── Position UI elements on staves ──
+function positionUI() {
+  const groups = getStaffPositions();
+  const W = window.innerWidth;
+
+  // "Click a level to start" vertically centered on first staff
+  const topText = document.getElementById('topText');
+  const staffMidHeight = (LINES_PER_STAFF - 1) * LINE_SPACING;
+  topText.style.left = MARGIN + 'px';
+  topText.style.top = (groups[0].top + staffMidHeight / 2 - 10) + 'px';
+
+  // Level 1: on staff 1-2 area
+  const l1 = document.getElementById('level1');
+  l1.style.left = (W * 0.2) + 'px';
+  l1.style.top = (groups[1].top - 40) + 'px';
+  l1.style.width = '280px';
+  l1.style.height = '120px';
+
+  // Level 2: on staff 2-3 area, centered
+  const l2 = document.getElementById('level2');
+  l2.style.left = (W * 0.4) + 'px';
+  l2.style.top = (groups[2].top - 30) + 'px';
+  l2.style.width = '340px';
+  l2.style.height = '140px';
+
+  // Level 3: on staff 3-4 area, right side
+  const l3 = document.getElementById('level3');
+  l3.style.left = (W * 0.6) + 'px';
+  l3.style.top = (groups[3].top - 10) + 'px';
+  l3.style.width = '420px';
+  l3.style.height = '90px';
+
+  // "A project by Jun Zhou" vertically centered on last staff
+  const bottomText = document.getElementById('bottomText');
+  bottomText.style.right = MARGIN + 'px';
+  bottomText.style.top = (groups[4].top + staffMidHeight / 2 - 10) + 'px';
+}
+
+// ── Draw staff lines ──
+function drawStaff() {
+  const W = window.innerWidth, H = window.innerHeight;
+  staffCtx.clearRect(0, 0, W * 2, H * 2); // account for dpr
+  staffCtx.strokeStyle = '#000';
+  staffCtx.lineWidth = 0.5;
+
+  const totalStaffH = (LINES_PER_STAFF - 1) * LINE_SPACING;
+  const totalH = STAFF_GROUPS * totalStaffH + (STAFF_GROUPS - 1) * STAFF_GAP;
+  const startY = (H - totalH) / 2;
+
+  let lineIdx = 0;
+  for (let g = 0; g < STAFF_GROUPS; g++) {
+    const groupTop = startY + g * (totalStaffH + STAFF_GAP);
+    const groupBottom = groupTop + (LINES_PER_STAFF - 1) * LINE_SPACING;
+
+    // Cursor must be within this group's vertical zone (halfway to neighboring staves)
+    const zoneTop = g === 0 ? 0 : groupTop - STAFF_GAP / 2;
+    const zoneBottom = g === STAFF_GROUPS - 1 ? H : groupBottom + STAFF_GAP / 2;
+    const cursorInGroup = mouseY >= zoneTop && mouseY <= zoneBottom;
+
+    for (let l = 0; l < LINES_PER_STAFF; l++) {
+      const baseY = groupTop + l * LINE_SPACING;
+
+      if (!cursorInGroup) {
+        staffCtx.beginPath();
+        staffCtx.moveTo(MARGIN, baseY);
+        staffCtx.lineTo(W - MARGIN, baseY);
+        staffCtx.stroke();
+        lineIdx++;
+        continue;
+      }
+
+      const seed = lineSeeds[lineIdx++];
+      const proximity = 1;
+      const amp = PEAK_AMP * seed.ampMul;
+
+      // Peak is offset from cursor, not at cursor
+      const peakX = mouseX + seed.peakDist * seed.peakDir;
+
+      // From cursor side: flat line -> rise to peak over slopeIn distance
+      // From far side: peak -> descend back to flat over slopeOut distance
+      // The line is flat at cursor and flat beyond the peak's outer edge
+
+      const innerEdge = peakX - seed.slopeIn * seed.peakDir; // where rise begins (near cursor)
+      const outerEdge = peakX + seed.slopeOut * seed.peakDir; // where descent ends (far from cursor)
+
+      // Sort points left to right, clamped within margins
+      const clamp = (x) => Math.max(MARGIN, Math.min(W - MARGIN, x));
+      const pts = [
+        [MARGIN, baseY],
+        [clamp(innerEdge), baseY],
+        [clamp(peakX), baseY - amp],
+        [clamp(outerEdge), baseY],
+        [W - MARGIN, baseY],
+      ].sort((a, b) => a[0] - b[0]);
+
+      staffCtx.beginPath();
+      staffCtx.moveTo(pts[0][0], pts[0][1]);
+      for (let p = 1; p < pts.length; p++) {
+        staffCtx.lineTo(pts[p][0], pts[p][1]);
+      }
+      staffCtx.stroke();
+    }
+  }
+  requestAnimationFrame(drawStaff);
+}
+
+// Init
+positionUI();
+drawStaff();
+
+// ── Hover preview ──
+const preview = document.getElementById('hoverPreview');
+const labels = ['Level 1 Preview', 'Level 2 Preview', 'Level 3 Preview'];
+
+document.querySelectorAll('.level-link').forEach(link => {
+  link.addEventListener('mouseenter', () => {
+    const lvl = parseInt(link.dataset.level);
+    preview.innerHTML = '<img src="./images/hover_' + lvl + '.png" style="width:100%;height:100%;object-fit:cover;">';
+    // Position over the Hyper element
+    const rect = link.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2 - 160;
+    const cy = rect.top + rect.height / 2 - 96.5;
+    preview.style.left = cx + 'px';
+    preview.style.top = cy + 'px';
+    preview.classList.add('visible');
+  });
+  link.addEventListener('mouseleave', () => {
+    preview.classList.remove('visible');
+  });
+});
+
+// ── Cursor trail (placeholder - swap in your actual image paths) ──
+const trailImages = ['./images/birds.png', './images/bug.png', './images/house.png'];
+let trailIndex = 0;
+let lastTrail = 0;
+document.addEventListener('mousemove', e => {
+  const now = Date.now();
+  if (now - lastTrail < 100) return;
+  lastTrail = now;
+
+  const idx = trailIndex % 3;
+  trailIndex++;
+ const el = document.createElement('img');
+  el.className = 'trail-img';
+  el.src = trailImages[idx];
+  el.style.left = (e.clientX - 18) + 'px';
+  el.style.top = (e.clientY - 18) + 'px';
+  document.body.appendChild(el);
+
+  setTimeout(() => el.classList.add('fade'), 50);
+  setTimeout(() => el.remove(), 3000);
+});
+
+// ── Level click ──
+document.querySelectorAll('.level-link').forEach(link => {
+  link.addEventListener('click', e => {
+    e.preventDefault();
+    const urls = {
+    '1': './1stchapter-bird-good.html',
+    '2': './hacking.html',
+    '3': './littlebug.html',
+  };
+  window.location.href = urls[link.dataset.level];
+  });
+});
+</script>
+</body>
+</html>
