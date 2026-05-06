@@ -16,7 +16,7 @@ const audio = document.getElementById("audio1");
             audio.volume =0;
         }
         else{
-      const minWidth = 500;   // smallest window
+      const minWidth = 600;   // smallest window
       const maxWidth = 1440;  // largest window
       const minRate = 0.5;    // slowest
       const maxRate = 8.0;    // fastest
